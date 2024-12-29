@@ -649,7 +649,7 @@ Budget: ${budget}
 Occupants: ${occupants}
 Extra notes: ${notes}
 
-Create a well-structured English prompt for stable diffusion ultra, focusing on a highly realistic interior design. Short and precise.`;
+Create a well-structured English prompt for stable diffusion ultra, focusing on a highly realistic interior design. Short and precise. Make sure to write only the prompt.`;
 
     const chatMessages = [
       {role:"system", content:"You are a helpful assistant."},
