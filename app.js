@@ -1,6 +1,6 @@
-/*********************************************
- * Stato e UI references
- *********************************************/
+/**********************************************
+ * STATO / UI
+ **********************************************/
 let availableCredits = 100;
 const creditsText = document.getElementById('creditsText');
 const creditsProgressBar = document.getElementById('creditsProgressBar');
@@ -12,18 +12,17 @@ const sections = document.querySelectorAll('.section');
 // Overlay
 const loadingOverlay = document.getElementById('loadingOverlay');
 
-/*********************************************
- * Inizializzazione
- *********************************************/
+/**********************************************
+ * INIT E NAV
+ **********************************************/
 function updateCreditsBar() {
   if (availableCredits < 0) availableCredits = 0;
   creditsText.textContent = `Crediti rimanenti: ${availableCredits.toFixed(2)}`;
   const percent = (availableCredits / 100) * 100;
   creditsProgressBar.style.width = `${percent}%`;
 }
-updateCreditsBar();
 
-// Navbar switch
+// Switch sezione
 navbarItems.forEach(item => {
   item.addEventListener('click', () => {
     navbarItems.forEach(i => i.classList.remove('active'));
@@ -35,9 +34,9 @@ navbarItems.forEach(item => {
   });
 });
 
-/*********************************************
- * Overlay
- *********************************************/
+/**********************************************
+ * OVERLAY
+ **********************************************/
 function showOverlay() {
   loadingOverlay.classList.remove('hidden');
 }
@@ -45,312 +44,645 @@ function hideOverlay() {
   loadingOverlay.classList.add('hidden');
 }
 
-/*********************************************
- * Rilevazione token
- *********************************************/
-function getApiToken() {
-  return document.getElementById('apiToken').value.trim();
+/**********************************************
+ * LOCAL STORAGE KEY
+ **********************************************/
+const saveTokenBtn = document.getElementById('saveTokenBtn');
+saveTokenBtn.addEventListener('click', async () => {
+  const tokenInput = document.getElementById('apiToken');
+  const openAiInput = document.getElementById('openAiKey');
+  const apiKey = tokenInput.value.trim();
+  const openAiKey = openAiInput.value.trim();
+
+  if (apiKey) {
+    localStorage.setItem('stabilityApiKey', apiKey);
+  }
+  if (openAiKey) {
+    localStorage.setItem('openAiKey', openAiKey);
+  }
+  alert("Chiavi salvate. Aggiorno i crediti (Stability).");
+  await refreshCredits();
+});
+
+window.addEventListener('load', async () => {
+  const storedKey = localStorage.getItem('stabilityApiKey');
+  if (storedKey) {
+    document.getElementById('apiToken').value = storedKey;
+  }
+  const storedOpenAi = localStorage.getItem('openAiKey');
+  if (storedOpenAi) {
+    document.getElementById('openAiKey').value = storedOpenAi;
+  }
+  await refreshCredits();
+  updateCreditsBar();
+});
+
+/**********************************************
+ * FUNZIONI UTILI
+ **********************************************/
+function getStabilityKey() {
+  return document.getElementById('apiToken').value.trim() || localStorage.getItem('stabilityApiKey') || "";
+}
+function getOpenAiKey() {
+  return document.getElementById('openAiKey').value.trim() || localStorage.getItem('openAiKey') || "";
 }
 
-/*********************************************
- * Funzione generica per Stability AI
- *********************************************/
-async function callStabilityEndpoint(url, fields, acceptType = 'image/*') {
-  const apiToken = getApiToken();
-  if (!apiToken) {
-    throw new Error("Inserisci la chiave di accesso prima!");
-  }
-
-  // Creiamo un FormData
-  const formData = new FormData();
-  for (const k in fields) {
-    formData.append(k, fields[k]);
-  }
-
-  showOverlay();
+async function refreshCredits() {
+  const apiKey = getStabilityKey();
+  if (!apiKey) return;
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Accept': acceptType
-      },
-      body: formData
+    showOverlay();
+    const r = await fetch("https://api.stability.ai/v1/user/balance", {
+      method:'GET',
+      headers:{
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept':'application/json'
+      }
     });
-    if (!res.ok) {
-      const errBuf = await res.arrayBuffer();
-      throw new Error(`Errore API: ${res.status} - ${new TextDecoder().decode(errBuf)}`);
+    if(!r.ok){
+      console.warn("Non riesco a recuperare i crediti dal server.");
+      return;
     }
-    // Aggiorniamo i crediti reali
-    await refreshCredits();
-    // Ritorno immagine o json
-    if (acceptType === 'image/*') {
-      return await res.blob();
-    } else {
-      return await res.json();
-    }
-  } finally {
+    const data = await r.json();
+    availableCredits = data.credits * 10;
+    updateCreditsBar();
+  }catch(err){
+    console.warn("Errore refresh crediti:", err.message);
+  }finally{
     hideOverlay();
   }
 }
 
-/*********************************************
- * Refresh dei crediti
- *********************************************/
-async function refreshCredits() {
-  const apiToken = getApiToken();
-  if (!apiToken) return; // se non c'è, skip
+async function callStabilityAI(url, fields) {
+  const apiKey = getStabilityKey();
+  if(!apiKey) throw new Error("Nessuna Stability Key trovata!");
 
-  try {
-    const r = await fetch("https://api.stability.ai/v1/user/balance", {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Accept': 'application/json'
-      }
+  const formData = new FormData();
+  for(const k in fields){
+    formData.append(k, fields[k]);
+  }
+
+  showOverlay();
+  try{
+    const res= await fetch(url, {
+      method:'POST',
+      headers:{
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'image/*'
+      },
+      body: formData
     });
-    if (!r.ok) {
-      console.warn("Non riesco a recuperare i crediti dal server!");
-      return;
+    if(!res.ok){
+      const errBuf= await res.arrayBuffer();
+      throw new Error(`Errore API: ${res.status} - ${new TextDecoder().decode(errBuf)}`);
     }
-    const data = await r.json();
-    // data.credits es: 0.63
-    // personalizziamo la scalatura
-    availableCredits = data.credits * 10;
-    updateCreditsBar();
-  } catch (err) {
-    console.warn("Errore refresh crediti:", err.message);
+    await refreshCredits();
+    return await res.blob();
+  }finally{
+    hideOverlay();
   }
 }
 
-/*********************************************
- * Sezione Generate (Ispirazioni)
- *********************************************/
-const genBtn = document.getElementById('genBtn');
-genBtn.addEventListener('click', async () => {
-  const outEl = document.getElementById('genOutput');
-  const prompt = document.getElementById('genPrompt').value.trim();
-  if (!prompt) {
-    outEl.textContent = "Scrivi un prompt, ad es: 'Salone in stile retrò'!";
+/**********************************************
+ * GENERA (ULTRA)
+ **********************************************/
+document.getElementById('genBtn').addEventListener('click', async()=>{
+  const outEl= document.getElementById('genOutput');
+  const promptVal= document.getElementById('genPrompt').value.trim();
+  if(!promptVal){
+    outEl.textContent="Inserisci un prompt!";
     return;
   }
-  outEl.textContent = "Creazione ispirazioni...";
+  outEl.textContent="Generazione (Ultra)...";
 
-  try {
-    // Esempio: /v2beta/stable-image/generate/core
-    const blob = await callStabilityEndpoint(
-      "https://api.stability.ai/v2beta/stable-image/generate/core",
-      { prompt },
-      "image/*"
-    );
-    const objURL = URL.createObjectURL(blob);
-    outEl.innerHTML = `<img src="${objURL}" alt="Ispirazione" style="max-width:100%">`;
-  } catch (err) {
-    outEl.textContent = err.message;
-  }
-});
-
-/*********************************************
- * Sezione Edit: Inpaint, Outpaint
- *********************************************/
-// Inpaint
-document.getElementById('inpaintBtn').addEventListener('click', async () => {
-  const outEl = document.getElementById('inpaintOutput');
-  const imageFile = document.getElementById('inpaintImage').files[0];
-  const maskFile = document.getElementById('inpaintMask').files[0];
-  if (!imageFile) {
-    outEl.textContent = "Carica l’immagine da modificare!";
-    return;
-  }
-  outEl.textContent = "Ritocco in corso...";
-
-  try {
-    const blob = await callStabilityEndpoint(
-      "https://api.stability.ai/v2beta/stable-image/edit/inpaint",
+  try{
+    const blob= await callStabilityAI(
+      "https://api.stability.ai/v2beta/stable-image/generate/ultra",
       {
-        image: imageFile,
-        mask: maskFile || ""
-      },
-      "image/*"
+        "prompt": promptVal,
+        "output_format": "webp"
+      }
     );
-    const objURL = URL.createObjectURL(blob);
-    outEl.innerHTML = `<img src="${objURL}" alt="Inpaint" style="max-width:100%">`;
-  } catch (err) {
-    outEl.textContent = err.message;
+    const objURL= URL.createObjectURL(blob);
+    outEl.innerHTML= `<img src="${objURL}" alt="Ultra result" style="max-width:100%;">`;
+  }catch(err){
+    outEl.textContent= err.message;
   }
 });
 
-// Outpaint
-document.getElementById('outpaintBtn').addEventListener('click', async () => {
-  const outEl = document.getElementById('outpaintOutput');
-  const imageFile = document.getElementById('outpaintImage').files[0];
-  const direction = document.getElementById('outpaintDirection').value;
-  if (!imageFile) {
-    outEl.textContent = "Carica l’immagine di base!";
+/**********************************************
+ * EDIT: STYLE, ERASE, MASK
+ **********************************************/
+
+// STYLE
+document.getElementById('styleBtn').addEventListener('click', async()=>{
+  const outEl= document.getElementById('styleOutput');
+  const file= document.getElementById('styleImage').files[0];
+  const prompt= document.getElementById('stylePrompt').value.trim();
+  if(!file){
+    outEl.textContent="Carica un'immagine base!";
     return;
   }
-  outEl.textContent = "Outpainting in corso...";
+  outEl.textContent="Applico lo Style...";
 
-  try {
-    const blob = await callStabilityEndpoint(
-      "https://api.stability.ai/v2beta/stable-image/edit/outpaint",
-      {
-        image: imageFile,
-        direction
-      },
-      "image/*"
-    );
-    const objURL = URL.createObjectURL(blob);
-    outEl.innerHTML = `<img src="${objURL}" alt="Outpaint" style="max-width:100%">`;
-  } catch (err) {
-    outEl.textContent = err.message;
-  }
-});
-
-/*********************************************
- * Sezione Upscale
- *********************************************/
-document.getElementById('upscaleFastBtn').addEventListener('click', async () => {
-  const outEl = document.getElementById('upscaleFastOutput');
-  const imageFile = document.getElementById('upscaleFastImage').files[0];
-  if (!imageFile) {
-    outEl.textContent = "Seleziona un'immagine per l'upscale!";
-    return;
-  }
-  outEl.textContent = "Miglioramento...";
-
-  try {
-    const blob = await callStabilityEndpoint(
-      "https://api.stability.ai/v2beta/stable-image/upscale/fast",
-      { image: imageFile },
-      "image/*"
-    );
-    const objURL = URL.createObjectURL(blob);
-    outEl.innerHTML = `<img src="${objURL}" alt="Upscale" style="max-width:100%">`;
-  } catch (err) {
-    outEl.textContent = err.message;
-  }
-});
-
-/*********************************************
- * Sezione Control: Sketch, Structure, Style
- *********************************************/
-// Sketch
-document.getElementById('sketchBtn').addEventListener('click', async () => {
-  const outEl = document.getElementById('sketchOutput');
-  const imageFile = document.getElementById('sketchImage').files[0];
-  const prompt = document.getElementById('sketchPrompt').value.trim();
-  const strength = document.getElementById('sketchStrength').value.trim();
-  if (!imageFile) {
-    outEl.textContent = "Carica il tuo sketch!";
-    return;
-  }
-  outEl.textContent = "Trasformazione sketch...";
-
-  try {
-    const blob = await callStabilityEndpoint(
-      "https://api.stability.ai/v2beta/stable-image/control/sketch",
-      {
-        image: imageFile,
-        prompt: prompt || "",
-        control_strength: strength || "0.6"
-      },
-      "image/*"
-    );
-    const objURL = URL.createObjectURL(blob);
-    outEl.innerHTML = `<img src="${objURL}" alt="Sketch result" style="max-width:100%">`;
-  } catch (err) {
-    outEl.textContent = err.message;
-  }
-});
-
-// Structure
-document.getElementById('structureBtn').addEventListener('click', async () => {
-  const outEl = document.getElementById('structureOutput');
-  const imageFile = document.getElementById('structureImage').files[0];
-  const prompt = document.getElementById('structurePrompt').value.trim();
-  const strength = document.getElementById('structureStrength').value.trim();
-  if (!imageFile) {
-    outEl.textContent = "Carica l'immagine di base!";
-    return;
-  }
-  outEl.textContent = "Mantenimento struttura...";
-
-  try {
-    const blob = await callStabilityEndpoint(
-      "https://api.stability.ai/v2beta/stable-image/control/structure",
-      {
-        image: imageFile,
-        prompt: prompt || "",
-        control_strength: strength || "0.7"
-      },
-      "image/*"
-    );
-    const objURL = URL.createObjectURL(blob);
-    outEl.innerHTML = `<img src="${objURL}" alt="Structure" style="max-width:100%">`;
-  } catch (err) {
-    outEl.textContent = err.message;
-  }
-});
-
-// Style
-document.getElementById('styleBtn').addEventListener('click', async () => {
-  const outEl = document.getElementById('styleOutput');
-  const imageFile = document.getElementById('styleImage').files[0];
-  const prompt = document.getElementById('stylePrompt').value.trim();
-  if (!imageFile) {
-    outEl.textContent = "Carica l'immagine su cui applicare lo stile!";
-    return;
-  }
-  outEl.textContent = "Applicazione stile...";
-
-  try {
-    const blob = await callStabilityEndpoint(
+  try{
+    const blob= await callStabilityAI(
       "https://api.stability.ai/v2beta/stable-image/control/style",
       {
-        image: imageFile,
-        prompt: prompt || ""
-      },
-      "image/*"
+        "image": file,
+        "prompt": prompt||"",
+        "output_format": "webp"
+      }
     );
-    const objURL = URL.createObjectURL(blob);
-    outEl.innerHTML = `<img src="${objURL}" alt="Style" style="max-width:100%">`;
-  } catch (err) {
-    outEl.textContent = err.message;
+    const objURL= URL.createObjectURL(blob);
+    outEl.innerHTML= `<img src="${objURL}" alt="Style" style="max-width:100%">`;
+  }catch(err){
+    outEl.textContent= err.message;
   }
 });
 
-/*********************************************
- * Sezione Crediti
- *********************************************/
-document.getElementById('refreshBalanceBtn').addEventListener('click', async () => {
-  const outEl = document.getElementById('balanceOutput');
-  outEl.textContent = "Verifico i tuoi crediti...";
-  
+// ERASE
+document.getElementById('eraseBtn').addEventListener('click', async()=>{
+  const outEl= document.getElementById('eraseOutput');
+  const imgFile= document.getElementById('eraseImage').files[0];
+  const maskFile= document.getElementById('eraseMask').files[0];
+  if(!imgFile){
+    outEl.textContent="Carica un'immagine da cui cancellare oggetti!";
+    return;
+  }
+  outEl.textContent="Elaborazione Erase...";
+
+  try{
+    const blob= await callStabilityAI(
+      "https://api.stability.ai/v2beta/stable-image/edit/erase",
+      {
+        "image": imgFile,
+        "mask": maskFile||"",
+        "output_format": "webp"
+      }
+    );
+    const objURL= URL.createObjectURL(blob);
+    outEl.innerHTML= `<img src="${objURL}" alt="Erase" style="max-width:100%">`;
+  }catch(err){
+    outEl.textContent= err.message;
+  }
+});
+
+// MASK EDITOR
+const refCanvas= document.getElementById('referenceCanvas');
+const refCtx= refCanvas.getContext('2d');
+
+const maskCanvas= document.getElementById('maskCanvas');
+const maskCtx= maskCanvas.getContext('2d');
+
+maskCtx.fillStyle="#000";
+maskCtx.fillRect(0,0,maskCanvas.width,maskCanvas.height);
+
+let drawing=false;
+let brushSize=10;
+let drawMode="drawWhite";
+
+document.getElementById('maskLoadRefBtn').addEventListener('click',()=>{
+  const file= document.getElementById('maskRefImage').files[0];
+  if(!file){
+    alert("Seleziona un'immagine di riferimento!");
+    return;
+  }
+  const img= new Image();
+  img.onload= ()=>{
+    refCtx.clearRect(0,0,refCanvas.width,refCanvas.height);
+    refCtx.globalAlpha= 0.3;
+    refCtx.drawImage(img,0,0,refCanvas.width,refCanvas.height);
+    refCtx.globalAlpha=1;
+  };
+  img.src= URL.createObjectURL(file);
+});
+
+maskCanvas.addEventListener('mousedown',(e)=>{drawing=true; drawMask(e);});
+maskCanvas.addEventListener('mousemove',drawMask);
+maskCanvas.addEventListener('mouseup',()=>{drawing=false;});
+maskCanvas.addEventListener('mouseleave',()=>{drawing=false;});
+
+function drawMask(e){
+  if(!drawing)return;
+  const rect= maskCanvas.getBoundingClientRect();
+  const x= e.clientX- rect.left;
+  const y= e.clientY- rect.top;
+
+  if(drawMode==='drawWhite'){
+    maskCtx.fillStyle="#fff";
+  } else {
+    maskCtx.fillStyle="#000";
+  }
+  maskCtx.beginPath();
+  maskCtx.arc(x,y,brushSize,0,2*Math.PI);
+  maskCtx.fill();
+}
+
+document.getElementById('maskBrushSize').addEventListener('input',(e)=>{
+  brushSize= parseInt(e.target.value);
+});
+document.getElementById('maskDrawMode').addEventListener('change',(e)=>{
+  drawMode= e.target.value;
+});
+document.getElementById('maskClearBtn').addEventListener('click',()=>{
+  maskCtx.fillStyle="#000";
+  maskCtx.fillRect(0,0,maskCanvas.width,maskCanvas.height);
+});
+document.getElementById('maskExportBtn').addEventListener('click',()=>{
+  const dataURL= maskCanvas.toDataURL("image/png");
+  const outEl= document.getElementById('maskExportOutput');
+  outEl.innerHTML= `
+    <p>Maschera esportata (B/N):</p>
+    <a href="${dataURL}" download="mask.png" class="modern-button">Scarica Mask</a>
+    <br/>
+    <img src="${dataURL}" alt="Mask" style="max-width:300px; margin-top:1rem; border:1px solid #777;">
+  `;
+});
+
+/**********************************************
+ * MIGLIORA: removeBG, inpaint, outpaint, upscale
+ **********************************************/
+
+// removeBG -> removeBgBtn
+document.getElementById('removeBgBtn').addEventListener('click',async()=>{
+  const outEl= document.getElementById('removeBgOutput');
+  const file= document.getElementById('removeBgImage').files[0];
+  if(!file){
+    outEl.textContent="Carica l'immagine da cui rimuovere sfondo!";
+    return;
+  }
+  outEl.textContent="Rimozione sfondo...";
+  try{
+    const blob= await callStabilityAI(
+      "https://api.stability.ai/v2beta/stable-image/edit/remove-background",
+      {
+        "image": file,
+        "output_format": "webp"
+      }
+    );
+    const objURL= URL.createObjectURL(blob);
+    outEl.innerHTML= `<img src="${objURL}" alt="RemoveBG" style="max-width:100%">`;
+  }catch(err){
+    outEl.textContent= err.message;
+  }
+});
+
+// inpaint
+document.getElementById('inpaintBtn').addEventListener('click', async()=>{
+  const outEl= document.getElementById('inpaintOutput');
+  const imgFile= document.getElementById('inpaintImage').files[0];
+  const maskFile= document.getElementById('inpaintMask').files[0];
+  if(!imgFile){
+    outEl.textContent="Carica l'immagine base.";
+    return;
+  }
+  outEl.textContent="Elaborazione inpaint...";
+  try{
+    const blob= await callStabilityAI(
+      "https://api.stability.ai/v2beta/stable-image/edit/inpaint",
+      {
+        "image":imgFile,
+        "mask":maskFile||"",
+        "output_format":"webp"
+      }
+    );
+    const objURL= URL.createObjectURL(blob);
+    outEl.innerHTML= `<img src="${objURL}" alt="Inpaint result" style="max-width:100%">`;
+  }catch(err){
+    outEl.textContent= err.message;
+  }
+});
+
+// outpaint
+document.getElementById('outpaintBtn').addEventListener('click', async()=>{
+  const outEl= document.getElementById('outpaintOutput');
+  const imgFile= document.getElementById('outpaintImage').files[0];
+  const promptVal= document.getElementById('outpaintPrompt').value.trim();
+  const creativityVal= document.getElementById('outpaintCreativity').value.trim()||"0.5";
+  const leftVal= document.getElementById('outpaintLeft').value.trim()||"0";
+  const rightVal= document.getElementById('outpaintRight').value.trim()||"0";
+  const upVal= document.getElementById('outpaintUp').value.trim()||"0";
+  const downVal= document.getElementById('outpaintDown').value.trim()||"0";
+
+  if(!imgFile){
+    outEl.textContent="Carica l'immagine!";
+    return;
+  }
+  if([leftVal,rightVal,upVal,downVal].every(v=> parseInt(v)===0)){
+    outEl.textContent="Specifica almeno un lato>0 per outpaint!";
+    return;
+  }
+  outEl.textContent="Eseguo outpaint...";
+  try{
+    const blob= await callStabilityAI(
+      "https://api.stability.ai/v2beta/stable-image/edit/outpaint",
+      {
+        "image": imgFile,
+        "prompt": promptVal,
+        "creativity": creativityVal,
+        "left": leftVal,
+        "right": rightVal,
+        "up": upVal,
+        "down": downVal
+      }
+    );
+    const objURL= URL.createObjectURL(blob);
+    outEl.innerHTML= `<img src="${objURL}" alt="Outpaint" style="max-width:100%">`;
+  }catch(err){
+    outEl.textContent= err.message;
+  }
+});
+
+// upscale
+document.getElementById('upscaleBtn').addEventListener('click', async()=>{
+  const outEl= document.getElementById('upscaleOutput');
+  const imgFile= document.getElementById('upscaleImage').files[0];
+  const promptVal= document.getElementById('upscalePrompt').value.trim();
+  if(!imgFile){
+    outEl.textContent="Carica un'immagine da upscalare!";
+    return;
+  }
+  outEl.textContent="Upscaling...";
+
+  try{
+    const blob= await callStabilityAI(
+      "https://api.stability.ai/v2beta/stable-image/upscale/conservative",
+      {
+        "image": imgFile,
+        "prompt": promptVal||"",
+        "output_format":"webp"
+      }
+    );
+    const objURL= URL.createObjectURL(blob);
+    outEl.innerHTML= `<img src="${objURL}" alt="Upscale" style="max-width:100%">`;
+  }catch(err){
+    outEl.textContent= err.message;
+  }
+});
+
+/**********************************************
+ * SOGNA: VIDEO + 3D
+ **********************************************/
+// video start
+document.getElementById('videoGenBtn').addEventListener('click', async()=>{
+  const outEl= document.getElementById('videoGenOutput');
+  const file= document.getElementById('videoImage').files[0];
+  const seedVal= parseInt(document.getElementById('videoSeed').value)||0;
+  const cfgVal= parseFloat(document.getElementById('videoCfgScale').value)||1.8;
+  const motionVal= parseInt(document.getElementById('videoMotionId').value)||127;
+
+  if(!file){
+    outEl.textContent="Carica immagine per video!";
+    return;
+  }
+  outEl.textContent="Avvio generazione video...";
+
   showOverlay();
-  try {
-    const apiToken = getApiToken();
-    if (!apiToken) {
-      throw new Error("Inserisci la chiave di accesso!");
+  try{
+    const apiKey= getStabilityKey();
+    if(!apiKey) throw new Error("Nessuna Stability Key.");
+
+    const fd= new FormData();
+    fd.append("image", file);
+    fd.append("seed", seedVal);
+    fd.append("cfg_scale", cfgVal);
+    fd.append("motion_bucket_id", motionVal);
+
+    const res= await fetch("https://api.stability.ai/v2beta/image-to-video",{
+      method:'POST',
+      headers:{
+        'Authorization':`Bearer ${apiKey}`
+      },
+      body:fd
+    });
+    if(!res.ok){
+      const errBuf=await res.arrayBuffer();
+      throw new Error(`Errore Video Start: ${res.status} - ${new TextDecoder().decode(errBuf)}`);
     }
-    const r = await fetch("https://api.stability.ai/v1/user/balance", {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Accept': 'application/json'
+    await refreshCredits();
+    const data= await res.json();
+    outEl.textContent=`Video avviato! generation_id: ${data.id||"???"}`;
+  }catch(err){
+    outEl.textContent= err.message;
+  }finally{
+    hideOverlay();
+  }
+});
+
+// video check
+document.getElementById('videoCheckBtn').addEventListener('click', async()=>{
+  const outEl= document.getElementById('videoCheckOutput');
+  const genId= document.getElementById('videoGenId').value.trim();
+  if(!genId){
+    outEl.textContent="Inserisci un generation_id!";
+    return;
+  }
+  outEl.textContent="Controllo stato video...";
+
+  showOverlay();
+  try{
+    const apiKey= getStabilityKey();
+    if(!apiKey) throw new Error("Nessuna Stability Key.");
+    const res= await fetch(`https://api.stability.ai/v2beta/image-to-video/result/${genId}`,{
+      method:'GET',
+      headers:{
+        'Authorization':`Bearer ${apiKey}`,
+        'Accept':'video/*'
       }
     });
-    if (!r.ok) {
-      const errText = await r.text();
-      throw new Error(`Errore: ${r.status} - ${errText}`);
+    if(res.status===202){
+      outEl.textContent="Video in progress, riprova tra un po'!";
+    }else if(res.status===200){
+      const vidBlob= await res.blob();
+      const objURL= URL.createObjectURL(vidBlob);
+      outEl.innerHTML=`
+        <p>Video completato!</p>
+        <video src="${objURL}" controls style="max-width:100%;"></video>
+      `;
+    }else{
+      const errJson=await res.json();
+      throw new Error(JSON.stringify(errJson));
     }
-    const data = await r.json();
-    outEl.textContent = `Crediti disponibili: ${data.credits.toFixed(2)}`;
-    availableCredits = data.credits * 10; // map real credits to local range
-    updateCreditsBar();
-  } catch (err) {
-    outEl.textContent = err.message;
-  } finally {
+    await refreshCredits();
+  }catch(err){
+    outEl.textContent= err.message;
+  }finally{
+    hideOverlay();
+  }
+});
+
+// 3D
+document.getElementById('threeDBtn').addEventListener('click', async()=>{
+  const outEl= document.getElementById('threeDOutput');
+  const file= document.getElementById('threeDImage').files[0];
+  if(!file){
+    outEl.textContent="Carica immagine da convertire in 3D!";
+    return;
+  }
+  outEl.textContent="Generazione 3D...";
+
+  showOverlay();
+  try{
+    const apiKey= getStabilityKey();
+    if(!apiKey) throw new Error("Nessuna Stability Key.");
+
+    const fd= new FormData();
+    fd.append("image", file);
+
+    const res= await fetch("https://api.stability.ai/v2beta/3d/stable-fast-3d",{
+      method:'POST',
+      headers:{
+        'Authorization':`Bearer ${apiKey}`
+      },
+      body: fd
+    });
+    if(!res.ok){
+      const errBuf= await res.arrayBuffer();
+      throw new Error(`Errore 3D: ${res.status} - ${new TextDecoder().decode(errBuf)}`);
+    }
+    await refreshCredits();
+
+    const glbBlob= await res.blob();
+    outEl.textContent="3D generato! Visualizzato nel viewer sotto.";
+    const glbURL= URL.createObjectURL(glbBlob);
+    const viewer= document.getElementById('threeDViewer');
+    viewer.src= glbURL;
+  }catch(err){
+    outEl.textContent= err.message;
+  }finally{
+    hideOverlay();
+  }
+});
+
+/**********************************************
+ * CONTROL (Structure)
+ **********************************************/
+document.getElementById('structureBtn').addEventListener('click', async()=>{
+  const outEl= document.getElementById('structureOutput');
+  const file= document.getElementById('structureImage').files[0];
+  const promptVal= document.getElementById('structurePrompt').value.trim()||"";
+  const strengthVal= document.getElementById('structureStrength').value.trim()||"0.7";
+
+  if(!file){
+    outEl.textContent="Carica immagine base!";
+    return;
+  }
+  outEl.textContent="Elaborazione Structure...";
+
+  try{
+    const blob= await callStabilityAI(
+      "https://api.stability.ai/v2beta/stable-image/control/structure",
+      {
+        "image": file,
+        "prompt": promptVal,
+        "control_strength": strengthVal,
+        "output_format":"webp"
+      }
+    );
+    const objURL= URL.createObjectURL(blob);
+    outEl.innerHTML= `<img src="${objURL}" alt="Structure" style="max-width:100%">`;
+  }catch(err){
+    outEl.textContent= err.message;
+  }
+});
+
+/**********************************************
+ * PREDICI (Questionario + generazione + openAI)
+ **********************************************/
+document.getElementById('predGenerateBtn').addEventListener('click', async()=>{
+  const outEl= document.getElementById('predOutput');
+
+  const env= document.getElementById('predEnv').value.trim(); 
+  const style= document.getElementById('predStyle').value.trim();
+  const colors= document.getElementById('predColors').value.trim();
+  const budget= document.getElementById('predBudget').value.trim();
+  const notes= document.getElementById('predNotes').value.trim();
+
+  outEl.textContent= "Genero scenari...";
+
+  // Esempio di prompt in inglese
+  const stablePrompt = `A ${style} ${env} with ${colors} colors, budget ${budget}, notes: ${notes}. Ultra realistic.`;
+
+  try{
+    showOverlay();
+
+    // 1) chiama stability (generate/ultra)
+    const blob= await callStabilityAI(
+      "https://api.stability.ai/v2beta/stable-image/generate/ultra",
+      {
+        "prompt": stablePrompt,
+        "output_format":"webp"
+      }
+    );
+    const objURL= URL.createObjectURL(blob);
+    outEl.innerHTML=`
+      <p>Immagine generata con prompt: <em>${stablePrompt}</em></p>
+      <img src="${objURL}" alt="Scenario" style="max-width:100%; margin-bottom:1rem;">
+    `;
+
+    // 2) chiama openAI per suggerimenti commerciali
+    const openAiK= getOpenAiKey();
+    if(!openAiK){
+      outEl.innerHTML+= `<p style="color:red">Nessuna OpenAI Key trovata. Non posso generare suggerimenti testuali.</p>`;
+      return;
+    }
+    const textPrompt= `You are a professional interior designer. The user wants a ${env} in a ${style} style with ${colors} colors, budget ${budget}. Additional notes: ${notes}. Provide commercial suggestions and creative solutions.`;
+
+    const advice= await callOpenAiText(openAiK, textPrompt);
+    outEl.innerHTML+=`
+      <h4>Consigli Commerciali (OpenAI):</h4>
+      <p>${advice}</p>
+    `;
+  }catch(err){
+    outEl.textContent= err.message;
+  }finally{
+    hideOverlay();
+  }
+});
+
+/**********************************************
+ * OPENAI COMPLETIONS
+ **********************************************/
+async function callOpenAiText(openAiKey, prompt){
+  const url= "https://api.openai.com/v1/completions";
+  const reqData= {
+    model: "gpt-3.5-turbo-instruct",
+    prompt: prompt,
+    max_tokens:2000,
+    temperature:0.7
+  };
+  const headers= {
+    "Content-Type":"application/json",
+    "Authorization": `Bearer ${openAiKey}`
+  };
+  
+  const resp= await fetch(url, {
+    method:'POST',
+    headers,
+    body: JSON.stringify(reqData)
+  });
+  if(!resp.ok){
+    const errText= await resp.text();
+    throw new Error(`OpenAI error: ${resp.status} - ${errText}`);
+  }
+  const data= await resp.json();
+  return data.choices[0].text.trim();
+}
+
+/**********************************************
+ * CREDITS
+ **********************************************/
+document.getElementById('refreshBalanceBtn').addEventListener('click', async()=>{
+  const outEl= document.getElementById('balanceOutput');
+  outEl.textContent="Recupero crediti...";
+  showOverlay();
+  try{
+    await refreshCredits();
+    outEl.textContent=`Crediti attuali (0-100): ${availableCredits.toFixed(2)}`;
+  }catch(err){
+    outEl.textContent= err.message;
+  }finally{
     hideOverlay();
   }
 });
