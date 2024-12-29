@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Magic Interiors</title>
+
+  <!-- Google Fonts -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;700&display=swap"/>
+
+  <!-- CSS principale -->
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+  <!-- Overlay di caricamento -->
+  <div id="loadingOverlay" class="overlay hidden">
+    <div class="spinner"></div>
+    <p class="loading-text">Un attimo... stiamo rendendo i tuoi spazi un sogno!</p>
+  </div>
+
+  <!-- Background animato gradiente viola/rosa -->
+  <div class="fluid-bg"></div>
+
+  <!-- Navbar (centrata, con border-radius) -->
+  <nav class="navbar glassy">
+    <div class="navbar-inner">
+      <div class="navbar-brand">
+        <!-- Logo SVG personalizzato -->
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="#f9b5ff" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 3.19 2.37 5.85 5.46 6.23l1.03 6.77c.03.22.21.39.43.39h.16c.22 0 .4-.17.43-.39l1.03-6.77C16.63 14.85 19 12.19 19 9c0-3.87-3.13-7-7-7z"/>
+        </svg>
+        <span class="brand-name">Magic Interiors</span>
+      </div>
+      <ul class="navbar-menu">
+        <li class="navbar-item active" data-section="home">
+          <span>Home</span>
+        </li>
+        <li class="navbar-item" data-section="generateSection">
+          <span>Ispirazioni</span>
+        </li>
+        <li class="navbar-item" data-section="editSection">
+          <span>Ritocchi</span>
+        </li>
+        <li class="navbar-item" data-section="upscaleSection">
+          <span>Migliora</span>
+        </li>
+        <li class="navbar-item" data-section="controlSection">
+          <span>Sketch & Control</span>
+        </li>
+        <li class="navbar-item" data-section="balanceSection">
+          <span>Crediti</span>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main container -->
+  <div class="container">
+    
+    <!-- Home -->
+    <section id="home" class="section active">
+      <h1 class="neon-text">Benvenuto nel tuo Atelier Virtuale!</h1>
+      <p>
+        Esprimi il tuo stile di interior design, sperimenta nuovi layout e
+        trasformiamo insieme i tuoi ambienti con la potenza dell'IA.
+      </p>
+      <div class="token-input-container">
+        <label for="apiToken">La tua chiave di Accesso (Stability AI):</label>
+        <input type="text" id="apiToken" placeholder="sk-..." class="modern-input"/>
+      </div>
+    </section>
+
+    <!-- Sezione Genera (Ispirazioni) -->
+    <section id="generateSection" class="section">
+      <h2>Genera nuove Ispirazioni</h2>
+      <p>Scrivi qualche riga su come vuoi sentirti nel tuo nuovo spazio... e ammira il risultato!</p>
+      <div class="group-box">
+        <label for="genPrompt">Descrivi lo stile o l'atmosfera:</label>
+        <input type="text" id="genPrompt" placeholder="Es: 'Camera da letto Boho-chic con piante'" class="modern-input"/>
+        <button id="genBtn" class="modern-button">Crea Ispirazione</button>
+        <div class="output" id="genOutput"></div>
+      </div>
+    </section>
+
+    <!-- Sezione Edit (Ritocchi: inpaint, outpaint) -->
+    <section id="editSection" class="section">
+      <h2>Ritocchi Rapidi</h2>
+      <p>
+        Hai già un'idea ma vuoi modificarla, rimuovere un oggetto o ampliare la scena?
+        Prova i nostri ritocchi:
+      </p>
+
+      <!-- Inpaint -->
+      <div class="group-box">
+        <label>Rimuovi/Modifica un elemento:</label>
+        <input type="file" id="inpaintImage" accept="image/*" class="modern-input"/>
+        <input type="file" id="inpaintMask" accept="image/*" class="modern-input"/>
+        <button id="inpaintBtn" class="modern-button">Inpaint</button>
+        <div class="output" id="inpaintOutput"></div>
+      </div>
+
+      <!-- Outpaint -->
+      <div class="group-box">
+        <label>Estendi la scena (Outpaint):</label>
+        <input type="file" id="outpaintImage" accept="image/*" class="modern-input"/>
+        <select id="outpaintDirection" class="modern-input">
+          <option value="left">Verso sinistra</option>
+          <option value="right">Verso destra</option>
+          <option value="up">Verso l'alto</option>
+          <option value="down">Verso il basso</option>
+        </select>
+        <button id="outpaintBtn" class="modern-button">Amplia lo scenario</button>
+        <div class="output" id="outpaintOutput"></div>
+      </div>
+    </section>
+
+    <!-- Sezione Upscale (Migliora) -->
+    <section id="upscaleSection" class="section">
+      <h2>Migliora la Qualità</h2>
+      <p>Presenta le tue idee in alta definizione. Carica l’immagine e potenzia la resa visiva!</p>
+
+      <div class="group-box">
+        <label>Upscale veloce:</label>
+        <input type="file" id="upscaleFastImage" accept="image/*" class="modern-input"/>
+        <button id="upscaleFastBtn" class="modern-button">Dai vita ai dettagli</button>
+        <div class="output" id="upscaleFastOutput"></div>
+      </div>
+    </section>
+
+    <!-- Sezione Control Tools (Sketch, Structure, Style) -->
+    <section id="controlSection" class="section">
+      <h2>Sketch & Control</h2>
+      <p>
+        Parti da un semplice sketch, mantieni la struttura di un’immagine, 
+        o applica un nuovo stile... Lascia che la tua creatività fluisca!
+      </p>
+      
+      <!-- Sketch -->
+      <div class="group-box">
+        <label>Trasforma uno schizzo in realtà:</label>
+        <input type="file" id="sketchImage" accept="image/*" class="modern-input"/>
+        <input type="text" id="sketchPrompt" placeholder="Es: 'Salotto con tocchi di industrial design'" class="modern-input"/>
+        <input type="number" step="0.1" min="0" max="1" id="sketchStrength" placeholder="Forza (0 - 1, es. 0.6)" class="modern-input"/>
+        <button id="sketchBtn" class="modern-button">Sketcha la Magia!</button>
+        <div class="output" id="sketchOutput"></div>
+      </div>
+
+      <!-- Structure -->
+      <div class="group-box">
+        <label>Mantieni la struttura di un’immagine:</label>
+        <input type="file" id="structureImage" accept="image/*" class="modern-input"/>
+        <input type="text" id="structurePrompt" placeholder="Es: 'Cucina minimal'" class="modern-input"/>
+        <input type="number" step="0.1" min="0" max="1" id="structureStrength" placeholder="Forza (0.7...)" class="modern-input"/>
+        <button id="structureBtn" class="modern-button">Rispetta la Forma</button>
+        <div class="output" id="structureOutput"></div>
+      </div>
+
+      <!-- Style -->
+      <div class="group-box">
+        <label>Cambia stile a un’idea:</label>
+        <input type="file" id="styleImage" accept="image/*" class="modern-input"/>
+        <input type="text" id="stylePrompt" placeholder="Es: 'Classico vintage'" class="modern-input"/>
+        <button id="styleBtn" class="modern-button">Rivisita lo Stile</button>
+        <div class="output" id="styleOutput"></div>
+      </div>
+    </section>
+
+    <!-- Sezione Crediti -->
+    <section id="balanceSection" class="section">
+      <h2>I tuoi Crediti</h2>
+      <p>Controlla quanti crediti hai ancora a disposizione per proseguire il tuo viaggio creativo.</p>
+      <button id="refreshBalanceBtn" class="modern-button">Aggiorna Crediti</button>
+      <div class="output" id="balanceOutput"></div>
+    </section>
+
+  </div>
+
+  <!-- Barra Crediti -->
+  <div class="credits-bar glassy">
+    <span id="creditsText">Crediti rimanenti: 100</span>
+    <div class="progress-container">
+      <div class="progress-bar" id="creditsProgressBar" style="width: 100%;"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>prototipo a cura di giammarco tassinari</p>
+  </footer>
+
+  <!-- JS -->
+  <script src="app.js"></script>
+</body>
+</html>
