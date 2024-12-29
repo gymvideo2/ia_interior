@@ -13,7 +13,7 @@ const sections = document.querySelectorAll('.section');
 const loadingOverlay = document.getElementById('loadingOverlay');
 
 /**********************************************
- * INIT E NAV
+ * INIZIALIZZAZIONE E NAVIGAZIONE
  **********************************************/
 function updateCreditsBar() {
   if (availableCredits < 0) availableCredits = 0;
@@ -22,7 +22,6 @@ function updateCreditsBar() {
   creditsProgressBar.style.width = `${percent}%`;
 }
 
-// Switch sezione
 navbarItems.forEach(item => {
   item.addEventListener('click', () => {
     navbarItems.forEach(i => i.classList.remove('active'));
@@ -106,9 +105,9 @@ async function refreshCredits() {
     const data = await r.json();
     availableCredits = data.credits * 10;
     updateCreditsBar();
-  }catch(err){
+  } catch(err){
     console.warn("Errore refresh crediti:", err.message);
-  }finally{
+  } finally{
     hideOverlay();
   }
 }
@@ -138,9 +137,39 @@ async function callStabilityAI(url, fields) {
     }
     await refreshCredits();
     return await res.blob();
-  }finally{
+  } finally{
     hideOverlay();
   }
+}
+
+/**********************************************
+ * CHIAMATE ChatGPT (gpt-4o-mini)
+ **********************************************/
+async function callChatGptMini(messages) {
+  const openAiKey= getOpenAiKey();
+  if(!openAiKey) throw new Error("Nessuna OpenAI Key trovata!");
+
+  const url= "https://api.openai.com/v1/chat/completions";
+  const reqData= {
+    model: "gpt-4o-mini",
+    messages: messages
+  };
+  const headers= {
+    "Content-Type":"application/json",
+    "Authorization": `Bearer ${openAiKey}`
+  };
+
+  const resp= await fetch(url, {
+    method:'POST',
+    headers,
+    body: JSON.stringify(reqData)
+  });
+  if(!resp.ok){
+    const errText= await resp.text();
+    throw new Error(`OpenAI error: ${resp.status} - ${errText}`);
+  }
+  const data= await resp.json();
+  return data.choices[0].message.content;
 }
 
 /**********************************************
@@ -196,7 +225,7 @@ document.getElementById('styleBtn').addEventListener('click', async()=>{
     );
     const objURL= URL.createObjectURL(blob);
     outEl.innerHTML= `<img src="${objURL}" alt="Style" style="max-width:100%">`;
-  }catch(err){
+  } catch(err){
     outEl.textContent= err.message;
   }
 });
@@ -207,7 +236,7 @@ document.getElementById('eraseBtn').addEventListener('click', async()=>{
   const imgFile= document.getElementById('eraseImage').files[0];
   const maskFile= document.getElementById('eraseMask').files[0];
   if(!imgFile){
-    outEl.textContent="Carica un'immagine da cui cancellare oggetti!";
+    outEl.textContent="Carica l'immagine da cui cancellare oggetti!";
     return;
   }
   outEl.textContent="Elaborazione Erase...";
@@ -223,7 +252,7 @@ document.getElementById('eraseBtn').addEventListener('click', async()=>{
     );
     const objURL= URL.createObjectURL(blob);
     outEl.innerHTML= `<img src="${objURL}" alt="Erase" style="max-width:100%">`;
-  }catch(err){
+  } catch(err){
     outEl.textContent= err.message;
   }
 });
@@ -235,6 +264,7 @@ const refCtx= refCanvas.getContext('2d');
 const maskCanvas= document.getElementById('maskCanvas');
 const maskCtx= maskCanvas.getContext('2d');
 
+// Avvio: nero
 maskCtx.fillStyle="#000";
 maskCtx.fillRect(0,0,maskCanvas.width,maskCanvas.height);
 
@@ -250,9 +280,19 @@ document.getElementById('maskLoadRefBtn').addEventListener('click',()=>{
   }
   const img= new Image();
   img.onload= ()=>{
-    refCtx.clearRect(0,0,refCanvas.width,refCanvas.height);
+    // Puliamo
+    refCtx.clearRect(0,0,refCanvas.width, refCanvas.height);
+    // Ridimensiona in base al canvas
+    const cw= refCanvas.width;
+    const ch= refCanvas.height;
+    const ratio= Math.min(cw / img.width, ch / img.height);
+    const newW= img.width * ratio;
+    const newH= img.height * ratio;
+    const offX= (cw - newW)/2;
+    const offY= (ch - newH)/2;
+
     refCtx.globalAlpha= 0.3;
-    refCtx.drawImage(img,0,0,refCanvas.width,refCanvas.height);
+    refCtx.drawImage(img, offX, offY, newW, newH);
     refCtx.globalAlpha=1;
   };
   img.src= URL.createObjectURL(file);
@@ -269,13 +309,9 @@ function drawMask(e){
   const x= e.clientX- rect.left;
   const y= e.clientY- rect.top;
 
-  if(drawMode==='drawWhite'){
-    maskCtx.fillStyle="#fff";
-  } else {
-    maskCtx.fillStyle="#000";
-  }
   maskCtx.beginPath();
-  maskCtx.arc(x,y,brushSize,0,2*Math.PI);
+  maskCtx.arc(x, y, brushSize, 0, 2*Math.PI);
+  maskCtx.fillStyle=(drawMode==='drawWhite')?"#fff":"#000";
   maskCtx.fill();
 }
 
@@ -293,7 +329,7 @@ document.getElementById('maskExportBtn').addEventListener('click',()=>{
   const dataURL= maskCanvas.toDataURL("image/png");
   const outEl= document.getElementById('maskExportOutput');
   outEl.innerHTML= `
-    <p>Maschera esportata (B/N):</p>
+    <p>Maschera esportata (bianco=maschera, nero=sfondo):</p>
     <a href="${dataURL}" download="mask.png" class="modern-button">Scarica Mask</a>
     <br/>
     <img src="${dataURL}" alt="Mask" style="max-width:300px; margin-top:1rem; border:1px solid #777;">
@@ -303,9 +339,8 @@ document.getElementById('maskExportBtn').addEventListener('click',()=>{
 /**********************************************
  * MIGLIORA: removeBG, inpaint, outpaint, upscale
  **********************************************/
-
-// removeBG -> removeBgBtn
-document.getElementById('removeBgBtn').addEventListener('click',async()=>{
+// removeBG
+document.getElementById('removeBgBtn').addEventListener('click', async()=>{
   const outEl= document.getElementById('removeBgOutput');
   const file= document.getElementById('removeBgImage').files[0];
   if(!file){
@@ -318,7 +353,7 @@ document.getElementById('removeBgBtn').addEventListener('click',async()=>{
       "https://api.stability.ai/v2beta/stable-image/edit/remove-background",
       {
         "image": file,
-        "output_format": "webp"
+        "output_format":"webp"
       }
     );
     const objURL= URL.createObjectURL(blob);
@@ -334,21 +369,21 @@ document.getElementById('inpaintBtn').addEventListener('click', async()=>{
   const imgFile= document.getElementById('inpaintImage').files[0];
   const maskFile= document.getElementById('inpaintMask').files[0];
   if(!imgFile){
-    outEl.textContent="Carica l'immagine base.";
+    outEl.textContent="Carica l'immagine base!";
     return;
   }
-  outEl.textContent="Elaborazione inpaint...";
+  outEl.textContent="Inpaint in corso...";
   try{
     const blob= await callStabilityAI(
       "https://api.stability.ai/v2beta/stable-image/edit/inpaint",
       {
-        "image":imgFile,
-        "mask":maskFile||"",
+        "image": imgFile,
+        "mask": maskFile||"",
         "output_format":"webp"
       }
     );
     const objURL= URL.createObjectURL(blob);
-    outEl.innerHTML= `<img src="${objURL}" alt="Inpaint result" style="max-width:100%">`;
+    outEl.innerHTML= `<img src="${objURL}" alt="Inpaint" style="max-width:100%">`;
   }catch(err){
     outEl.textContent= err.message;
   }
@@ -358,7 +393,7 @@ document.getElementById('inpaintBtn').addEventListener('click', async()=>{
 document.getElementById('outpaintBtn').addEventListener('click', async()=>{
   const outEl= document.getElementById('outpaintOutput');
   const imgFile= document.getElementById('outpaintImage').files[0];
-  const promptVal= document.getElementById('outpaintPrompt').value.trim();
+  const promptVal= document.getElementById('outpaintPrompt').value.trim()||"";
   const creativityVal= document.getElementById('outpaintCreativity').value.trim()||"0.5";
   const leftVal= document.getElementById('outpaintLeft').value.trim()||"0";
   const rightVal= document.getElementById('outpaintRight').value.trim()||"0";
@@ -366,14 +401,14 @@ document.getElementById('outpaintBtn').addEventListener('click', async()=>{
   const downVal= document.getElementById('outpaintDown').value.trim()||"0";
 
   if(!imgFile){
-    outEl.textContent="Carica l'immagine!";
+    outEl.textContent="Carica un'immagine da outpaint!";
     return;
   }
-  if([leftVal,rightVal,upVal,downVal].every(v=> parseInt(v)===0)){
+  if([leftVal,rightVal,upVal,downVal].every(v => parseInt(v)===0)){
     outEl.textContent="Specifica almeno un lato>0 per outpaint!";
     return;
   }
-  outEl.textContent="Eseguo outpaint...";
+  outEl.textContent="Outpainting...";
   try{
     const blob= await callStabilityAI(
       "https://api.stability.ai/v2beta/stable-image/edit/outpaint",
@@ -404,7 +439,6 @@ document.getElementById('upscaleBtn').addEventListener('click', async()=>{
     return;
   }
   outEl.textContent="Upscaling...";
-
   try{
     const blob= await callStabilityAI(
       "https://api.stability.ai/v2beta/stable-image/upscale/conservative",
@@ -422,7 +456,7 @@ document.getElementById('upscaleBtn').addEventListener('click', async()=>{
 });
 
 /**********************************************
- * SOGNA: VIDEO + 3D
+ * SOGNA: video + 3D
  **********************************************/
 // video start
 document.getElementById('videoGenBtn').addEventListener('click', async()=>{
@@ -433,7 +467,7 @@ document.getElementById('videoGenBtn').addEventListener('click', async()=>{
   const motionVal= parseInt(document.getElementById('videoMotionId').value)||127;
 
   if(!file){
-    outEl.textContent="Carica immagine per video!";
+    outEl.textContent="Carica immagine per il video!";
     return;
   }
   outEl.textContent="Avvio generazione video...";
@@ -454,7 +488,7 @@ document.getElementById('videoGenBtn').addEventListener('click', async()=>{
       headers:{
         'Authorization':`Bearer ${apiKey}`
       },
-      body:fd
+      body: fd
     });
     if(!res.ok){
       const errBuf=await res.arrayBuffer();
@@ -492,16 +526,16 @@ document.getElementById('videoCheckBtn').addEventListener('click', async()=>{
       }
     });
     if(res.status===202){
-      outEl.textContent="Video in progress, riprova tra un po'!";
-    }else if(res.status===200){
+      outEl.textContent="Video in progress, riprova più tardi!";
+    } else if(res.status===200){
       const vidBlob= await res.blob();
       const objURL= URL.createObjectURL(vidBlob);
       outEl.innerHTML=`
         <p>Video completato!</p>
         <video src="${objURL}" controls style="max-width:100%;"></video>
       `;
-    }else{
-      const errJson=await res.json();
+    } else {
+      const errJson= await res.json();
       throw new Error(JSON.stringify(errJson));
     }
     await refreshCredits();
@@ -517,7 +551,7 @@ document.getElementById('threeDBtn').addEventListener('click', async()=>{
   const outEl= document.getElementById('threeDOutput');
   const file= document.getElementById('threeDImage').files[0];
   if(!file){
-    outEl.textContent="Carica immagine da convertire in 3D!";
+    outEl.textContent="Carica un'immagine da convertire in 3D!";
     return;
   }
   outEl.textContent="Generazione 3D...";
@@ -535,22 +569,22 @@ document.getElementById('threeDBtn').addEventListener('click', async()=>{
       headers:{
         'Authorization':`Bearer ${apiKey}`
       },
-      body: fd
+      body:fd
     });
     if(!res.ok){
       const errBuf= await res.arrayBuffer();
       throw new Error(`Errore 3D: ${res.status} - ${new TextDecoder().decode(errBuf)}`);
     }
     await refreshCredits();
-
     const glbBlob= await res.blob();
     outEl.textContent="3D generato! Visualizzato nel viewer sotto.";
+
     const glbURL= URL.createObjectURL(glbBlob);
     const viewer= document.getElementById('threeDViewer');
     viewer.src= glbURL;
-  }catch(err){
+  } catch(err){
     outEl.textContent= err.message;
-  }finally{
+  } finally{
     hideOverlay();
   }
 });
@@ -565,7 +599,7 @@ document.getElementById('structureBtn').addEventListener('click', async()=>{
   const strengthVal= document.getElementById('structureStrength').value.trim()||"0.7";
 
   if(!file){
-    outEl.textContent="Carica immagine base!";
+    outEl.textContent="Carica un'immagine base!";
     return;
   }
   outEl.textContent="Elaborazione Structure...";
@@ -588,87 +622,76 @@ document.getElementById('structureBtn').addEventListener('click', async()=>{
 });
 
 /**********************************************
- * PREDICI (Questionario + generazione + openAI)
+ * PREDICI (questionario -> ChatGPT -> stable -> lettera)
  **********************************************/
 document.getElementById('predGenerateBtn').addEventListener('click', async()=>{
   const outEl= document.getElementById('predOutput');
 
-  const env= document.getElementById('predEnv').value.trim(); 
-  const style= document.getElementById('predStyle').value.trim();
+  // Domande
+  const env= document.getElementById('predEnv').value;
+  const style= document.getElementById('predStyle').value;
   const colors= document.getElementById('predColors').value.trim();
-  const budget= document.getElementById('predBudget').value.trim();
+  const budget= document.getElementById('predBudget').value;
+  const occupants= document.getElementById('predOccupants').value.trim();
   const notes= document.getElementById('predNotes').value.trim();
 
-  outEl.textContent= "Genero scenari...";
+  outEl.textContent= "Elaboro questionario e creo il prompt...";
 
-  // Esempio di prompt in inglese
-  const stablePrompt = `A ${style} ${env} with ${colors} colors, budget ${budget}, notes: ${notes}. Ultra realistic.`;
-
-  try{
+  try {
     showOverlay();
 
-    // 1) chiama stability (generate/ultra)
-    const blob= await callStabilityAI(
+    // 1) Chiediamo a ChatGPT di creare il prompt
+    const userMessage = `Act as an expert prompt engineer for stable diffusion. Based on these details:
+Environment: ${env}
+Style: ${style}
+Colors: ${colors}
+Budget: ${budget}
+Occupants: ${occupants}
+Extra notes: ${notes}
+
+Create a well-structured English prompt for stable diffusion ultra, focusing on a highly realistic interior design. Short and precise.`;
+
+    const chatMessages = [
+      {role:"system", content:"You are a helpful assistant."},
+      {role:"user", content: userMessage}
+    ];
+
+    const stablePrompt = await callChatGptMini(chatMessages);
+
+    // 2) Generiamo l’immagine con stablePrompt
+    const sdBlob = await callStabilityAI(
       "https://api.stability.ai/v2beta/stable-image/generate/ultra",
       {
         "prompt": stablePrompt,
         "output_format":"webp"
       }
     );
-    const objURL= URL.createObjectURL(blob);
-    outEl.innerHTML=`
-      <p>Immagine generata con prompt: <em>${stablePrompt}</em></p>
-      <img src="${objURL}" alt="Scenario" style="max-width:100%; margin-bottom:1rem;">
+    const sdURL= URL.createObjectURL(sdBlob);
+
+    // 3) Lettera commerciale in italiano (senza vision)
+    // chiediamo a ChatGPT di scrivere in italiano, 
+    // descrivendo la composizione come se l'avesse vista
+    const letterMsg= `Write a compelling commercial letter in Italian describing a highly realistic interior design concept that has been generated using the following prompt: "${stablePrompt}". The letter should be polished, persuasive, and highlight the space, style, and suggestions for the client.`;
+
+    const letterMessages= [
+      {role:"system", content:"You are a helpful assistant."},
+      {role:"user", content: letterMsg}
+    ];
+    const commercialLetter= await callChatGptMini(letterMessages);
+
+    outEl.innerHTML= `
+      <p><strong>Prompt creato da ChatGPT:</strong> <em>${stablePrompt}</em></p>
+      <img src="${sdURL}" alt="Generated Interior" style="max-width:100%; margin-bottom:1rem;">
+      <h4>Lettera Commerciale in Italiano:</h4>
+      <p>${commercialLetter}</p>
     `;
 
-    // 2) chiama openAI per suggerimenti commerciali
-    const openAiK= getOpenAiKey();
-    if(!openAiK){
-      outEl.innerHTML+= `<p style="color:red">Nessuna OpenAI Key trovata. Non posso generare suggerimenti testuali.</p>`;
-      return;
-    }
-    const textPrompt= `You are a professional interior designer. The user wants a ${env} in a ${style} style with ${colors} colors, budget ${budget}. Additional notes: ${notes}. Provide commercial suggestions and creative solutions. Write in italian and use html tags with bolds, br tag, list and so on.`;
-
-    const advice= await callOpenAiText(openAiK, textPrompt);
-    outEl.innerHTML+=`
-      <h4>Consigli Commerciali (OpenAI):</h4>
-      <p>${advice}</p>
-    `;
-  }catch(err){
-    outEl.textContent= err.message;
-  }finally{
+  } catch(err){
+    outEl.textContent= `Errore: ${err.message}`;
+  } finally{
     hideOverlay();
   }
 });
-
-/**********************************************
- * OPENAI COMPLETIONS
- **********************************************/
-async function callOpenAiText(openAiKey, prompt){
-  const url= "https://api.openai.com/v1/completions";
-  const reqData= {
-    model: "gpt-3.5-turbo-instruct",
-    prompt: prompt,
-    max_tokens:2000,
-    temperature:0.7
-  };
-  const headers= {
-    "Content-Type":"application/json",
-    "Authorization": `Bearer ${openAiKey}`
-  };
-  
-  const resp= await fetch(url, {
-    method:'POST',
-    headers,
-    body: JSON.stringify(reqData)
-  });
-  if(!resp.ok){
-    const errText= await resp.text();
-    throw new Error(`OpenAI error: ${resp.status} - ${errText}`);
-  }
-  const data= await resp.json();
-  return data.choices[0].text.trim();
-}
 
 /**********************************************
  * CREDITS
@@ -677,12 +700,12 @@ document.getElementById('refreshBalanceBtn').addEventListener('click', async()=>
   const outEl= document.getElementById('balanceOutput');
   outEl.textContent="Recupero crediti...";
   showOverlay();
-  try{
+  try {
     await refreshCredits();
     outEl.textContent=`Crediti attuali (0-100): ${availableCredits.toFixed(2)}`;
-  }catch(err){
+  } catch(err){
     outEl.textContent= err.message;
-  }finally{
+  } finally {
     hideOverlay();
   }
 });
