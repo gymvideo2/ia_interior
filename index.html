@@ -8,7 +8,7 @@
   <!-- Google Font -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;700&display=swap" />
   
-  <!-- model-viewer per 3D -->
+  <!-- model-viewer per 3D (se desideri) -->
   <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
   <!-- CSS principale -->
@@ -16,7 +16,7 @@
 </head>
 <body>
 
-  <!-- Overlay di caricamento -->
+  <!-- Overlay caricamento -->
   <div id="loadingOverlay" class="overlay hidden">
     <div class="spinner"></div>
     <p class="loading-text">Attendi... stiamo realizzando i tuoi sogni!</p>
@@ -29,7 +29,7 @@
   <nav class="navbar glassy">
     <div class="navbar-inner">
       <div class="navbar-brand">
-        <!-- Logo SVG blu -->
+        <!-- Logo in SVG blu -->
         <svg width="36" height="36" viewBox="0 0 24 24" fill="#0A84FF" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2C8.13 2 5 5.13 5 9c0 3.19 2.37 5.85 5.46 6.23l1.03 6.77c.03.22.21.39.43.39h.16c.22 0 .4-.17.43-.39l1.03-6.77C16.63 14.85 19 12.19 19 9c0-3.87-3.13-7-7-7z"/>
         </svg>
@@ -55,8 +55,8 @@
     <section id="home" class="section active">
       <h1 class="neon-text">Benvenuto nel tuo Atelier Virtuale!</h1>
       <p>
-        Seleziona “Genera”, “Edita”, “Migliora”, “Sogna”, “Control” o “Predici” per trasformare 
-        o creare immagini. Vai a “Credits” per controllare i tuoi crediti rimanenti.
+        Scegli “Genera”, “Edita”, “Migliora”, “Sogna”, “Control” o “Predici” per sperimentare.
+        Vai a “Credits” per verificare i crediti rimasti.
       </p>
       
       <div class="token-input-container">
@@ -70,44 +70,43 @@
       </div>
     </section>
 
-    <!-- GENERA -->
+    <!-- GENERA (Ultra) -->
     <section id="genSection" class="section">
       <h2>Genera (Ultra)</h2>
-      <p>Scrivi un prompt e genera un’immagine realistica con il modello Ultra.</p>
+      <p>Crea immagini fotorealistiche da un prompt. Usa il modello Ultra di Stability AI.</p>
       <div class="group-box">
-        <label for="genPrompt">Prompt descrittivo:</label>
-        <input type="text" id="genPrompt" placeholder="Es. 'Lighthouse on a cliff...'" class="modern-input"/>
-        
+        <label>Prompt (inglese):</label>
+        <input type="text" id="genPrompt" placeholder="Esempio: 'A futuristic city at sunset...'" class="modern-input"/>
         <button id="genBtn" class="modern-button">Genera!</button>
         <div class="output" id="genOutput"></div>
       </div>
     </section>
 
-    <!-- EDITA -->
+    <!-- EDITA (Style, Erase, Mask Editor) -->
     <section id="editSection" class="section">
       <h2>Edita</h2>
-      <p>Style, Erase, e un Editor di Maschere per disegnare a mano in B/N.</p>
+      <p>Applica uno Style, Erase con maschera, e crea maschere B/N con un editor manuale.</p>
 
       <!-- Style -->
       <div class="group-box">
         <h3>Style (Control-Style)</h3>
-        <label for="styleImage">Carica un'immagine da cambiare stile:</label>
+        <label>Immagine da modificare:</label>
         <input type="file" id="styleImage" accept="image/*" class="modern-input"/>
 
-        <label for="stylePrompt">Prompt (es: 'a majestic portrait...'):</label>
-        <input type="text" id="stylePrompt" placeholder="Es: 'a majestic portrait of a chicken'" class="modern-input"/>
-        
+        <label>Prompt (es: 'a majestic portrait of a lion'):</label>
+        <input type="text" id="stylePrompt" class="modern-input"/>
+
         <button id="styleBtn" class="modern-button">Apply Style</button>
         <div class="output" id="styleOutput"></div>
       </div>
 
       <!-- Erase -->
       <div class="group-box">
-        <h3>Erase (con maschera)</h3>
-        <label for="eraseImage">Carica l'immagine da modificare:</label>
+        <h3>Erase</h3>
+        <label>Immagine base:</label>
         <input type="file" id="eraseImage" accept="image/*" class="modern-input"/>
 
-        <label for="eraseMask">Carica la maschera (B/N, PNG):</label>
+        <label>Maschera B/N (PNG):</label>
         <input type="file" id="eraseMask" accept="image/*" class="modern-input"/>
 
         <button id="eraseBtn" class="modern-button">Erase!</button>
@@ -117,26 +116,26 @@
       <!-- Mask Editor -->
       <div class="group-box">
         <h3>Mask Editor (Manuale)</h3>
-        <p>Crea una maschera B/N, bianco = area mascherata, nero = sfondo.</p>
+        <p>Disegna in bianco su sfondo nero, o cancella in nero.</p>
 
-        <label for="maskRefImage">Immagine di Riferimento (opzionale):</label>
+        <label for="maskRefImage">Immagine di riferimento (opzionale):</label>
         <input type="file" id="maskRefImage" accept="image/*" class="modern-input"/>
-        <button id="maskLoadRefBtn" class="modern-button">Carica come sfondo</button>
+        <button id="maskLoadRefBtn" class="modern-button">Carica Riferimento</button>
 
         <div class="mask-container">
           <canvas id="referenceCanvas" width="600" height="400"></canvas>
           <canvas id="maskCanvas" width="600" height="400"></canvas>
         </div>
 
-        <label for="maskBrushSize">Brush size (1..50)</label>
+        <label>Brush Size (1..50)</label>
         <input type="range" id="maskBrushSize" min="1" max="50" value="10"/>
 
-        <label for="maskDrawMode">Modo Disegno</label>
+        <label>Modo Disegno</label>
         <select id="maskDrawMode" class="modern-input">
           <option value="drawWhite">Disegna Bianco</option>
           <option value="eraser">Cancella (Nero)</option>
         </select>
-        
+
         <button id="maskClearBtn" class="modern-button">Pulisci Canvas</button>
         <button id="maskExportBtn" class="modern-button">Esporta Maschera</button>
 
@@ -147,12 +146,12 @@
     <!-- MIGLIORA -->
     <section id="improveSection" class="section">
       <h2>Migliora</h2>
-      <p>Remove BG, Inpaint, Outpaint e Upscale per rifinire le tue immagini.</p>
+      <p>Remove BG, Inpaint, Outpaint, Upscale per rifinire le tue immagini.</p>
 
       <!-- Remove BG -->
       <div class="group-box">
         <h3>Remove Background</h3>
-        <label for="removeBgImage">Immagine da cui rimuovere sfondo:</label>
+        <label>Immagine da cui rimuovere sfondo:</label>
         <input type="file" id="removeBgImage" accept="image/*" class="modern-input"/>
         <button id="removeBgBtn" class="modern-button">Remove BG!</button>
         <div class="output" id="removeBgOutput"></div>
@@ -161,10 +160,10 @@
       <!-- Inpaint -->
       <div class="group-box">
         <h3>Inpaint</h3>
-        <label for="inpaintImage">Immagine base:</label>
+        <label>Immagine base:</label>
         <input type="file" id="inpaintImage" accept="image/*" class="modern-input"/>
 
-        <label for="inpaintMask">Maschera B/N (PNG):</label>
+        <label>Maschera B/N (PNG):</label>
         <input type="file" id="inpaintMask" accept="image/*" class="modern-input"/>
 
         <button id="inpaintBtn" class="modern-button">Inpaint!</button>
@@ -174,13 +173,13 @@
       <!-- Outpaint -->
       <div class="group-box">
         <h3>Outpaint</h3>
-        <label for="outpaintImage">Immagine da espandere:</label>
+        <label>Immagine da espandere:</label>
         <input type="file" id="outpaintImage" accept="image/*" class="modern-input"/>
 
-        <label for="outpaintPrompt">Prompt da aggiungere:</label>
-        <input type="text" id="outpaintPrompt" placeholder="Es: 'un giardino fiorito'..." class="modern-input"/>
+        <label>Prompt:</label>
+        <input type="text" id="outpaintPrompt" placeholder="Es: 'giardino fiorito'..." class="modern-input"/>
 
-        <label for="outpaintCreativity">Creatività (0..1)</label>
+        <label>Creatività (0..1)</label>
         <input type="number" step="0.1" min="0" max="1" id="outpaintCreativity" value="0.5" class="modern-input"/>
 
         <div class="row-box">
@@ -205,27 +204,27 @@
 
       <!-- Upscale -->
       <div class="group-box">
-        <h3>Upscale (conservative)</h3>
-        <label for="upscaleImage">Immagine da upscalare:</label>
+        <h3>Upscale (Conservative)</h3>
+        <label>Immagine da upscalare:</label>
         <input type="file" id="upscaleImage" accept="image/*" class="modern-input"/>
 
-        <label for="upscalePrompt">Prompt (opzionale):</label>
-        <input type="text" id="upscalePrompt" placeholder="Es: 'flower photo'" class="modern-input"/>
+        <label>Prompt (opzionale):</label>
+        <input type="text" id="upscalePrompt" class="modern-input"/>
 
         <button id="upscaleBtn" class="modern-button">Upscale!</button>
         <div class="output" id="upscaleOutput"></div>
       </div>
     </section>
 
-    <!-- SOGNA -->
+    <!-- SOGNA (Video, 3D) -->
     <section id="dreamSection" class="section">
       <h2>Sogna (Video + 3D)</h2>
-      <p>Genera video da un’immagine o converti in 3D e visualizza il risultato.</p>
+      <p>Genera un video partendo da un'immagine, o convertila in 3D.</p>
 
       <!-- Video -->
       <div class="group-box">
         <h3>Video: Avvia</h3>
-        <label for="videoImage">Immagine di base per video:</label>
+        <label>Immagine base (PNG/JPG):</label>
         <input type="file" id="videoImage" accept="image/*" class="modern-input"/>
 
         <label>Seed <input type="number" id="videoSeed" value="0" class="modern-input"/></label>
@@ -238,36 +237,35 @@
 
       <div class="group-box">
         <h3>Video: Check/Download</h3>
-        <label for="videoGenId">Generation ID per controllare:</label>
-        <input type="text" id="videoGenId" placeholder="Es. e52772ac75b..." class="modern-input"/>
-        <button id="videoCheckBtn" class="modern-button">Check / Download</button>
+        <label for="videoGenId">Generation ID (es: e52772ac75b...):</label>
+        <input type="text" id="videoGenId" placeholder="ID generazione" class="modern-input"/>
+        <button id="videoCheckBtn" class="modern-button">Controlla</button>
         <div class="output" id="videoCheckOutput"></div>
       </div>
 
       <!-- 3D -->
       <div class="group-box">
-        <h3>3D Conversion (Fast 3D) + Viewer</h3>
-        <label for="threeDImage">Immagine di base:</label>
+        <h3>3D Conversion + Viewer</h3>
+        <label for="threeDImage">Immagine base (PNG/JPG):</label>
         <input type="file" id="threeDImage" accept="image/*" class="modern-input"/>
-        <button id="threeDBtn" class="modern-button">Genera 3D!</button>
+        <button id="threeDBtn" class="modern-button">Genera 3D</button>
         <div class="output" id="threeDOutput"></div>
 
-        <p>Visualizza il file 3D generato:</p>
+        <p>3D Viewer:</p>
         <model-viewer id="threeDViewer" style="width:100%; height:400px;"
                       auto-rotate camera-controls></model-viewer>
       </div>
     </section>
 
-    <!-- CONTROL -->
+    <!-- CONTROL (Structure) -->
     <section id="controlSection" class="section">
       <h2>Control (Structure)</h2>
-      <p>Mantieni la struttura di un’immagine, ma cambiane aspetto con un prompt testuale.</p>
-
+      <p>Mantieni la struttura di un’immagine, ma cambiane aspetto (prompt testuale).</p>
       <div class="group-box">
-        <label>Immagine base (structure):</label>
+        <label>Immagine base (PNG/JPG):</label>
         <input type="file" id="structureImage" accept="image/*" class="modern-input"/>
 
-        <label>Prompt (es: 'english garden...'):</label>
+        <label>Prompt (es: 'an english garden...'):</label>
         <input type="text" id="structurePrompt" class="modern-input"/>
 
         <label>Strength (0..1):</label>
@@ -278,40 +276,59 @@
       </div>
     </section>
 
-    <!-- PREDICI -->
+    <!-- PREDICI (Questionario, ChatGPT -> Prompt -> Stability -> Lettera) -->
     <section id="predictSection" class="section">
-      <h2>Predici (Questionario + AI Scenes + Testo Commerciale)</h2>
-      <p>Raccogli info dal cliente e genera immagini + suggerimenti commerciali (usando anche OpenAI).</p>
+      <h2>Predici (Questionario + Immagine + Lettera Commerciale)</h2>
+      <p>
+        Raccogli informazioni sul progetto e lascia che ChatGPT crei il prompt
+        per Stable Diffusion, generi l’immagine e scriva una lettera commerciale in italiano.
+      </p>
 
       <div class="group-box">
         <h3>Questionario Cliente</h3>
-        
-        <label>Tipo di ambiente (es: 'kitchen'):
+
+        <label>Tipo di ambiente:
           <select id="predEnv" class="modern-input">
-            <option value="living room">Living room</option>
-            <option value="kitchen">Kitchen</option>
-            <option value="bedroom">Bedroom</option>
-            <option value="office">Office</option>
+            <option value="kitchen">Cucina</option>
+            <option value="bedroom">Camera da Letto</option>
+            <option value="living room">Soggiorno</option>
+            <option value="office">Ufficio</option>
+            <option value="bathroom">Bagno</option>
+            <option value="dining room">Sala da Pranzo</option>
           </select>
         </label>
 
-        <label>Stile preferito (es: 'modern, minimal'):
-          <input type="text" id="predStyle" placeholder="modern, minimal..." class="modern-input"/>
+        <label>Stile preferito:
+          <select id="predStyle" class="modern-input">
+            <option value="modern">Moderno</option>
+            <option value="classic">Classico</option>
+            <option value="bohemian">Bohemien</option>
+            <option value="industrial">Industriale</option>
+            <option value="minimal">Minimal</option>
+          </select>
         </label>
 
         <label>Colori dominanti:
-          <input type="text" id="predColors" placeholder="white, beige..." class="modern-input"/>
+          <input type="text" id="predColors" placeholder="es: white, beige, pastel..." class="modern-input"/>
         </label>
 
         <label>Budget (Low, Medium, High):
-          <input type="text" id="predBudget" class="modern-input"/>
+          <select id="predBudget" class="modern-input">
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
         </label>
 
-        <label>Altre preferenze:
+        <label>Occupanti (es: 'famiglia di 4'):
+          <input type="text" id="predOccupants" class="modern-input"/>
+        </label>
+
+        <label>Altre preferenze / note:
           <textarea id="predNotes" rows="3" class="modern-input" placeholder="Note extra..."></textarea>
         </label>
 
-        <button id="predGenerateBtn" class="modern-button">Genera Scenari e Consigli</button>
+        <button id="predGenerateBtn" class="modern-button">Genera Scenari e Lettera</button>
         <div class="output" id="predOutput"></div>
       </div>
     </section>
@@ -319,13 +336,13 @@
     <!-- CREDITS -->
     <section id="balanceSection" class="section">
       <h2>Credits</h2>
-      <p>Controlla i crediti rimanenti per la tua avventura creativa!</p>
+      <p>Visualizza i crediti (Stability AI) per continuare a creare liberamente!</p>
       <button id="refreshBalanceBtn" class="modern-button">Aggiorna Crediti</button>
       <div class="output" id="balanceOutput"></div>
     </section>
   </div>
 
-  <!-- Barra Credits -->
+  <!-- Barra in basso dei crediti -->
   <div class="credits-bar glassy">
     <span id="creditsText">Crediti rimanenti: 100</span>
     <div class="progress-container">
@@ -340,7 +357,7 @@
 
   <!-- Script principale -->
   <script src="app.js"></script>
-  <!-- Font Awesome per le icone se serve -->
+  <!-- Font Awesome (opzionale per icone) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
 </body>
 </html>
