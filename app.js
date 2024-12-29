@@ -627,7 +627,7 @@ document.getElementById('predGenerateBtn').addEventListener('click', async()=>{
       outEl.innerHTML+= `<p style="color:red">Nessuna OpenAI Key trovata. Non posso generare suggerimenti testuali.</p>`;
       return;
     }
-    const textPrompt= `You are a professional interior designer. The user wants a ${env} in a ${style} style with ${colors} colors, budget ${budget}. Additional notes: ${notes}. Provide commercial suggestions and creative solutions.`;
+    const textPrompt= `You are a professional interior designer. The user wants a ${env} in a ${style} style with ${colors} colors, budget ${budget}. Additional notes: ${notes}. Provide commercial suggestions and creative solutions. Write in italian and use html tags with bolds, br tag, list and so on.`;
 
     const advice= await callOpenAiText(openAiK, textPrompt);
     outEl.innerHTML+=`
